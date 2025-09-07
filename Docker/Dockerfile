@@ -9,6 +9,6 @@ WORKDIR /app
 
 COPY release/ ./
 
-RUN chmod +x ./fishy-game-dev-release.x86_64
+RUN chmod +x ./release.x86_64
 
-CMD ["./fishy-game-dev-release.x86_64", "-batchmode", "-nographics", "-logFile"]
+CMD ["./release.x86_64", "-batchmode", "-nographics", "-logFile"]
