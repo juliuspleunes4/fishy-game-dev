@@ -27,8 +27,10 @@ public class FishingManager : NetworkBehaviour
 
     //gameObjects
     [SerializeField] Camera playerCamera;
-    GameObject fishFightDialog;
-    GameObject caughtDialog;
+
+    // TODO: Assign these in Unity Inspector (typically located at Player(Clone)/Canvas(Clone)/)
+    [SerializeField] GameObject fishFightDialog;
+    [SerializeField] GameObject caughtDialog;
 
     //Variables
     public bool isFishing = false;
@@ -65,14 +67,20 @@ public class FishingManager : NetworkBehaviour
         if(!isLocalPlayer) {
             return; 
         }
-        //TODO: don't make this code dependent on string paths
-        fishFightDialog = GameObject.Find("Player(Clone)/Canvas(Clone)/Fish fight dialog");
-        caughtDialog = GameObject.Find("Player(Clone)/Canvas(Clone)/Fish caught dialog");
-        fishFight = fishFightDialog.GetComponent<FishFight>();
-        caughtData = caughtDialog.GetComponent<CaughtDialogData>();
-        if( fishFightDialog == null || caughtDialog == null)
+        
+        if (fishFightDialog != null)
         {
-            Debug.LogError("Could not find a canvas dialog");
+            fishFight = fishFightDialog.GetComponent<FishFight>();
+        }
+        
+        if (caughtDialog != null)
+        {
+            caughtData = caughtDialog.GetComponent<CaughtDialogData>();
+        }
+        
+        if (fishFightDialog == null || caughtDialog == null)
+        {
+            Debug.LogError("Fish fight or caught dialog is not assigned in the inspector");
         }
     }
 
