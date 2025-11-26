@@ -203,6 +203,7 @@ public class GameNetworkManager : NetworkManager
         PlayerData dataPlayer = player.GetComponent<PlayerData>();
         if (!connNames.TryGetValue(conn, out string name) || dataPlayer == null)
         {
+            // According to Mirror's documentation, this is indeed the correct way to handle such cases.
             // conn.Disconnect() is the correct Mirror pattern for server-side validation failures
             // No need to send error message here since client hasn't reached game state yet
             Debug.LogWarning($"OnBeginCreateCharacter failed: Missing connection name or PlayerData component for {conn}");
