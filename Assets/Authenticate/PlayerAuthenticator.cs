@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Mirror;
 using TMPro;
 using UnityEngine;
@@ -32,12 +33,14 @@ public class PlayerAuthenticator : NetworkAuthenticator
 
     public struct RegisterRequestMessage : NetworkMessage
     {
-        //TODO: username should conform to regex: /^[_0-9a-zA-Z]*$/
-        //TODO: email should conform to regex: /^[0-9a-zA-Z][-\._a-zA-Z0-9]*@([0-9a-zA-Z][-\._0-9a-zA-Z]*\.)+[a-zA-Z]{2,4}$/
         public string registerUsername;
         public string registerPassword;
         public string registerEmail;
     }
+
+    // Validation regex patterns
+    private const string USERNAME_REGEX = @"^[_0-9a-zA-Z]*$";
+    private const string EMAIL_REGEX = @"^[0-9a-zA-Z][-\._a-zA-Z0-9]*@([0-9a-zA-Z][-\._0-9a-zA-Z]*\.)+[a-zA-Z]{2,4}$";
 
     public struct LoginResponseMessage : NetworkMessage {
         public int code;

@@ -36,12 +36,30 @@ public class ChatHistory : MonoBehaviour
         UIManager.SendChat();
     }
 
+    public void CloseChat(InputAction.CallbackContext context)
+    {
+        // Only deselect if chat input field is currently selected
+        if (chatInput.isFocused)
+        {
+            DeselectSendChatField();
+        }
+    }
+
     void DeselectSendChatField()
     {
-        //TODO: Also deselect textField on escape
-        //TODO: check if textfield is selected, we're currently justs deselecting whatever was selected.
-        GameObject eventSystem = GameObject.Find("EventSystem");
-        eventSystem.GetComponent<UnityEngine.EventSystems.EventSystem>().SetSelectedGameObject(null);
+        // Check if the chat input field is actually selected before deselecting
+        if (chatInput.isFocused)
+        {
+            GameObject eventSystem = GameObject.Find("EventSystem");
+            if (eventSystem != null)
+            {
+                var es = eventSystem.GetComponent<UnityEngine.EventSystems.EventSystem>();
+                if (es != null && es.currentSelectedGameObject == chatInput.gameObject)
+                {
+                    es.SetSelectedGameObject(null);
+                }
+            }
+        }
     }
 
     public void AddChatHistory(string text, string playerName, string playerColor)
@@ -58,6 +76,9 @@ public class ChatHistory : MonoBehaviour
 
         playerControls.Player.SendChat.performed += SendChat;
         playerControls.Player.SendChat.Enable();
+
+        playerControls.Player.CloseChat.performed += CloseChat;
+        playerControls.Player.CloseChat.Enable();
         chatInput.onSelect.AddListener(_ =>
         {
             NetworkClient.connection.identity.GetComponent<PlayerController>().IncreaseObjectsPreventingMovement();
@@ -72,5 +93,6 @@ public class ChatHistory : MonoBehaviour
     {
         playerControls.Player.OpenChat.Disable();
         playerControls.Player.SendChat.Disable();
+        playerControls.Player.CloseChat.Disable();
     }
 }
