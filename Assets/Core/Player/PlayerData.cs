@@ -669,30 +669,31 @@ public class PlayerData : NetworkBehaviour
     {
         switch (UnityEngine.Random.Range(0, 6))
         {
-            //TODO, can the devisions be done at compile time?
+            //> Originally this code was using RGB values directly, which meant that Unity had to calculate the float values at runtime 
+            //> everytime a player connected. By pre-calculating these float values, we reduce runtime overhead. :)
             case 0:
-                //Red
-                SetChatColor(new Color(188f / 255f, 6f / 255f, 6f / 255f, 255f / 255f));
+                //Red (188, 6, 6)
+                SetChatColor(new Color(0.737254902f, 0.023529412f, 0.023529412f, 1f));
                 break;
             case 1:
-                //Dark green
-                SetChatColor(new Color(34f / 255f, 117f / 255f, 56f / 255f, 255f / 255f));
+                //Dark green (34, 117, 56)
+                SetChatColor(new Color(0.133333333f, 0.458823529f, 0.219607843f, 1f));
                 break;
             case 2:
-                //Dark blue
-                SetChatColor(new Color(37f / 255f, 56f / 255f, 138f / 255f, 255f / 255f));
+                //Dark blue (37, 56, 138)
+                SetChatColor(new Color(0.145098039f, 0.219607843f, 0.541176471f, 1f));
                 break;
             case 3:
-                //Darker Cyan
-                SetChatColor(new Color(54f / 255f, 149f / 255f, 168f / 255f, 255f / 255f));
+                //Darker Cyan (54, 149, 168)
+                SetChatColor(new Color(0.211764706f, 0.584313725f, 0.658823529f, 1f));
                 break;
             case 4:
-                //Magenta
-                SetChatColor(new Color(214f / 255f, 49f / 255f, 156f / 255f, 255f / 255f));
+                //Magenta (214, 49, 156)
+                SetChatColor(new Color(0.839215686f, 0.192156863f, 0.611764706f, 1f));
                 break;
             case 5:
-                //Purple
-                SetChatColor(new Color(140f / 255f, 50f / 255f, 161f / 255f, 255f / 255f));
+                //Purple (140, 50, 161)
+                SetChatColor(new Color(0.549019608f, 0.196078431f, 0.631372549f, 1f));
                 break;
             default:
                 UnityEngine.Debug.LogWarning("Random color did not return a color, defaulting to black");
