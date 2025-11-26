@@ -53,6 +53,36 @@ public class PlayerAuthenticator : NetworkAuthenticator
 
     #endregion
 
+    #region Validation
+
+    /// <summary>
+    /// Validates username format against allowed pattern (alphanumeric and underscore only)
+    /// </summary>
+    /// <param name="username">Username to validate</param>
+    /// <returns>True if username is valid, false otherwise</returns>
+    private bool IsValidUsername(string username)
+    {
+        if (string.IsNullOrEmpty(username))
+            return false;
+        
+        return Regex.IsMatch(username, USERNAME_REGEX);
+    }
+
+    /// <summary>
+    /// Validates email format against standard email pattern
+    /// </summary>
+    /// <param name="email">Email address to validate</param>
+    /// <returns>True if email is valid, false otherwise</returns>
+    private bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrEmpty(email))
+            return false;
+        
+        return Regex.IsMatch(email, EMAIL_REGEX);
+    }
+
+    #endregion
+
     #region Server
 
     // RuntimeInitializeOnLoadMethod -> fast playmode without domain reload
@@ -127,6 +157,24 @@ public class PlayerAuthenticator : NetworkAuthenticator
         string username = msg.registerUsername;
         string password = msg.registerPassword;
         string email = msg.registerEmail;
+
+        // Validate username format
+        if (!IsValidUsername(username))
+        {
+            Debug.LogWarning($"Registration failed: Invalid username format: {username}");
+            SendResponse(400, false, conn);
+            StartCoroutine(DelayedDisconnect(conn, 1f));
+            return;
+        }
+
+        // Validate email format
+        if (!IsValidEmail(email))
+        {
+            Debug.LogWarning($"Registration failed: Invalid email format: {email}");
+            SendResponse(400, false, conn);
+            StartCoroutine(DelayedDisconnect(conn, 1f));
+            return;
+        }
 
         GameNetworkManager.connNames.Add(conn, username);
         DatabaseCommunications.RegisterRequest(username, password, email, conn, EndRegisterRequestMessage);
