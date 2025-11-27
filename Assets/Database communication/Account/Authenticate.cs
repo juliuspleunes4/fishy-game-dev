@@ -38,6 +38,8 @@ public class Authenticate : MonoBehaviour
         if (RegisterPasswordField != null)
         {
             RegisterPasswordField.onValueChanged.AddListener(OnPasswordFieldChanged);
+            // Initialize strength indicator with current password value
+            UpdatePasswordStrengthIndicator(RegisterPasswordField.text);
         }
     }
 
