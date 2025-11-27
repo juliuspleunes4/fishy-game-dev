@@ -664,42 +664,22 @@ public class PlayerData : NetworkBehaviour
         return new Guid(reorderedBytes);
     }
 
+    // Predefined chat colors for random assignment
+    private static readonly Color32[] chatColors = new Color32[]
+    {
+        new Color32(188, 6, 6, 255),      // Red
+        new Color32(34, 117, 56, 255),    // Dark green
+        new Color32(37, 56, 138, 255),    // Dark blue
+        new Color32(54, 149, 168, 255),   // Darker Cyan
+        new Color32(214, 49, 156, 255),   // Magenta
+        new Color32(140, 50, 161, 255)    // Purple
+    };
+
     [Server]
     public void SetRandomColor()
     {
-        switch (UnityEngine.Random.Range(0, 6))
-        {
-            //> Originally this code was using RGB values directly, which meant that Unity had to calculate the float values at runtime 
-            //> everytime a player connected. By pre-calculating these float values, we reduce runtime overhead. :)
-            case 0:
-                //Red (188, 6, 6)
-                SetChatColor(new Color(0.737254902f, 0.023529412f, 0.023529412f, 1f));
-                break;
-            case 1:
-                //Dark green (34, 117, 56)
-                SetChatColor(new Color(0.133333333f, 0.458823529f, 0.219607843f, 1f));
-                break;
-            case 2:
-                //Dark blue (37, 56, 138)
-                SetChatColor(new Color(0.145098039f, 0.219607843f, 0.541176471f, 1f));
-                break;
-            case 3:
-                //Darker Cyan (54, 149, 168)
-                SetChatColor(new Color(0.211764706f, 0.584313725f, 0.658823529f, 1f));
-                break;
-            case 4:
-                //Magenta (214, 49, 156)
-                SetChatColor(new Color(0.839215686f, 0.192156863f, 0.611764706f, 1f));
-                break;
-            case 5:
-                //Purple (140, 50, 161)
-                SetChatColor(new Color(0.549019608f, 0.196078431f, 0.631372549f, 1f));
-                break;
-            default:
-                UnityEngine.Debug.LogWarning("Random color did not return a color, defaulting to black");
-                SetChatColor(Color.black);
-                break;
-        }
+        int index = UnityEngine.Random.Range(0, chatColors.Length);
+        SetChatColor(chatColors[index]);
     }
 
     [Server]
