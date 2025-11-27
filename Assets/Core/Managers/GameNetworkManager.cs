@@ -203,24 +203,12 @@ public class GameNetworkManager : NetworkManager
         PlayerData dataPlayer = player.GetComponent<PlayerData>();
         if (!connNames.TryGetValue(conn, out string name) || dataPlayer == null)
         {
-            // According to Mirror's documentation, this is indeed the correct way to handle such cases.
-            // https://mirror-networking.gitbook.io/docs/manual/components/network-authenticators
-            // https://mirror-networking.gitbook.io/docs/components/network-authenticators/basic-authenticator
-            // 
-            // conn.Disconnect() is the correct Mirror pattern for server-side validation failures
-            // No need to send error message here since client hasn't reached game state yet
             Debug.LogWarning($"OnBeginCreateCharacter failed: Missing connection name or PlayerData component for {conn}");
             conn.Disconnect();
             return;
         }
         if (!connUUID.TryGetValue(conn, out Guid uuid) || dataPlayer == null)
         {
-            // According to Mirror's documentation, this is indeed the correct way to handle such cases.
-            // https://mirror-networking.gitbook.io/docs/manual/components/network-authenticators
-            // https://mirror-networking.gitbook.io/docs/components/network-authenticators/basic-authenticator
-            //
-            // conn.Disconnect() is the correct Mirror pattern for server-side validation failures
-            // No need to send error message here since client hasn't reached game state yet
             Debug.LogWarning($"OnBeginCreateCharacter failed: Missing UUID or PlayerData component for {conn}");
             conn.Disconnect();
             return;
