@@ -77,3 +77,6 @@ crashlytics-build.properties
 .idea
 /.idea/
 /.idea/*
+
+# Ignore auto generated files by Unity when creating the project
+Fishy Game/
