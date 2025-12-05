@@ -144,6 +144,15 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""CloseChat"",
+                    ""type"": ""Button"",
+                    ""id"": ""a7f8e3d2-9c4b-4a5e-8f1d-6b2c9a7e4f3d"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -344,6 +353,17 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
                     ""action"": ""SendChat"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""c5d9f2a1-8b7e-4c3d-9a6f-1e4b8c9d2f7a"",
+                    ""path"": ""<Keyboard>/escape"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""CloseChat"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -358,6 +378,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         m_Player_FishFightLeft = m_Player.FindAction("FishFightLeft", throwIfNotFound: true);
         m_Player_OpenChat = m_Player.FindAction("OpenChat", throwIfNotFound: true);
         m_Player_SendChat = m_Player.FindAction("SendChat", throwIfNotFound: true);
+        m_Player_CloseChat = m_Player.FindAction("CloseChat", throwIfNotFound: true);
     }
 
     ~@PlayerControls()
@@ -444,6 +465,7 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_FishFightLeft;
     private readonly InputAction m_Player_OpenChat;
     private readonly InputAction m_Player_SendChat;
+    private readonly InputAction m_Player_CloseChat;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -479,6 +501,10 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/SendChat".
         /// </summary>
         public InputAction @SendChat => m_Wrapper.m_Player_SendChat;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/CloseChat".
+        /// </summary>
+        public InputAction @CloseChat => m_Wrapper.m_Player_CloseChat;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -523,6 +549,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @SendChat.started += instance.OnSendChat;
             @SendChat.performed += instance.OnSendChat;
             @SendChat.canceled += instance.OnSendChat;
+            @CloseChat.started += instance.OnCloseChat;
+            @CloseChat.performed += instance.OnCloseChat;
+            @CloseChat.canceled += instance.OnCloseChat;
         }
 
         /// <summary>
@@ -552,6 +581,9 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
             @SendChat.started -= instance.OnSendChat;
             @SendChat.performed -= instance.OnSendChat;
             @SendChat.canceled -= instance.OnSendChat;
+            @CloseChat.started -= instance.OnCloseChat;
+            @CloseChat.performed -= instance.OnCloseChat;
+            @CloseChat.canceled -= instance.OnCloseChat;
         }
 
         /// <summary>
@@ -634,5 +666,12 @@ public partial class @PlayerControls: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnSendChat(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "CloseChat" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnCloseChat(InputAction.CallbackContext context);
     }
 }
