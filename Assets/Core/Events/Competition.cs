@@ -253,7 +253,7 @@ namespace GlobalCompetitionSystem
         }
 
         // >> Creates a random competition event with varied parameters.
-        // >> Currently supports fish collection competitions with randomized rewards and durations.
+        // >> Randomly selects between MostFish, LargestFish, and MostItems competition types.
         [Server]
         private static void CreateRandomEvent()
         {
@@ -303,11 +303,40 @@ namespace GlobalCompetitionSystem
             
             ItemDefinition selectedFish = fishItems[UnityEngine.Random.Range(0, fishItems.Count)];
             
-            // Create competition state
-            MostItemsCompetitonState state = new MostItemsCompetitonState
+            // Randomly select competition type (33% each)
+            int competitionType = UnityEngine.Random.Range(0, 3);
+            ICompetitionState state;
+            string eventDescription;
+            
+            switch (competitionType)
             {
-                ItemId = selectedFish.Id
-            };
+                case 0: // Most Fish Competition
+                    state = new MostFishCompetitonState
+                    {
+                        specificFish = true,
+                        fishIDToCatch = selectedFish.Id
+                    };
+                    eventDescription = $"Catch the most {selectedFish.DisplayName}";
+                    break;
+                    
+                case 1: // Largest Fish Competition
+                    state = new largestFishCompetitonState
+                    {
+                        specificFish = true,
+                        fishIDToCatch = selectedFish.Id
+                    };
+                    eventDescription = $"Catch the biggest {selectedFish.DisplayName}";
+                    break;
+                    
+                case 2: // Most Items Competition
+                default:
+                    state = new MostItemsCompetitonState
+                    {
+                        ItemId = selectedFish.Id
+                    };
+                    eventDescription = $"Collect the most {selectedFish.DisplayName}";
+                    break;
+            }
             
             // Randomize currency type (70% coins, 30% bucks for rarer rewards)
             StoreManager.CurrencyType currency = UnityEngine.Random.value < 0.7f 
@@ -317,7 +346,7 @@ namespace GlobalCompetitionSystem
             // Generate prize distribution based on currency type
             List<int> prizeDistribution = GeneratePrizeDistribution(currency);
             
-            Debug.Log($"[CompetitionManager] Created event: Collect {selectedFish.DisplayName} | Start: {startDate:yyyy-MM-dd HH:mm} | Duration: {durationHours}h | Currency: {currency}");
+            Debug.Log($"[CompetitionManager] Created event: {eventDescription} | Start: {startDate:yyyy-MM-dd HH:mm} | Duration: {durationHours}h | Currency: {currency}");
             
             AddUpcomingCompetition(state, startDate, endDate, currency, prizeDistribution);
         }
