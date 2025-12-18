@@ -128,6 +128,7 @@ public class GameNetworkManager : NetworkManager
         NetworkServer.RegisterHandler<MovePlayerMessage>(OnPlayerMoveMessage);
         
         StartCoroutine(CompetitionManager.UpdateCompetitions());
+        StartCoroutine(CompetitionManager.AutoGenerateEvents());
     }
 
     [Client]

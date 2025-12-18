@@ -214,6 +214,155 @@ namespace GlobalCompetitionSystem
             }
         }
 
+        // >> Automatically generates and schedules new competitions to keep the event queue populated.
+        // >> Checks daily and maintains a minimum of 3 upcoming events.
+        [Server]
+        public static IEnumerator AutoGenerateEvents()
+        {
+            // Wait a bit on startup to ensure all systems are initialized
+            yield return new WaitForSeconds(10f);
+            
+            DateTime lastEventCheck = DateTime.MinValue;
+            TimeSpan checkInterval = new TimeSpan(24, 0, 0); // Check once per day
+            int minUpcomingEvents = 3;
+            
+            Debug.Log("[CompetitionManager] Auto-generation system started");
+            
+            while (true)
+            {
+                // Check if we need to generate new events
+                if (DateTime.Now - lastEventCheck > checkInterval)
+                {
+                    lastEventCheck = DateTime.Now;
+                    
+                    if (_upcomingCompetitions.Count < minUpcomingEvents)
+                    {
+                        int eventsToGenerate = minUpcomingEvents - _upcomingCompetitions.Count;
+                        Debug.Log($"[CompetitionManager] Generating {eventsToGenerate} new events. Current count: {_upcomingCompetitions.Count}");
+                        
+                        for (int i = 0; i < eventsToGenerate; i++)
+                        {
+                            CreateRandomEvent();
+                        }
+                    }
+                }
+                
+                // Check every hour
+                yield return new WaitForSeconds(3600f);
+            }
+        }
+
+        // >> Creates a random competition event with varied parameters.
+        // >> Currently supports fish collection competitions with randomized rewards and durations.
+        [Server]
+        private static void CreateRandomEvent()
+        {
+            // Find the latest upcoming event to schedule after it
+            DateTime startDate;
+            if (_upcomingCompetitions.Count > 0)
+            {
+                Competition lastEvent = _upcomingCompetitions.Last();
+                // Schedule 6-12 hours after the last event ends
+                int hoursDelay = UnityEngine.Random.Range(6, 13);
+                startDate = lastEvent.EndDateTime.AddHours(hoursDelay);
+            }
+            else if (_currentCompetition != null)
+            {
+                // Schedule after current competition
+                int hoursDelay = UnityEngine.Random.Range(6, 13);
+                startDate = _currentCompetition.CompetitionData.RunningCompetition.EndDateTime.AddHours(hoursDelay);
+            }
+            else
+            {
+                // No competitions at all, start soon
+                startDate = DateTime.Now.AddHours(UnityEngine.Random.Range(2, 6));
+            }
+            
+            // Event duration: 12-48 hours
+            int durationHours = UnityEngine.Random.Range(12, 49);
+            DateTime endDate = startDate.AddHours(durationHours);
+            
+            // Select a random fish to collect
+            ItemDefinition[] allItems = ItemSystem.ItemRegistry.GetFullItemsList();
+            List<ItemDefinition> fishItems = new List<ItemDefinition>();
+            
+            foreach (var item in allItems)
+            {
+                var fishBehaviour = item.GetBehaviour<ItemSystem.FishBehaviour>();
+                if (fishBehaviour != null)
+                {
+                    fishItems.Add(item);
+                }
+            }
+            
+            if (fishItems.Count == 0)
+            {
+                Debug.LogWarning("[CompetitionManager] No fish items found for event generation!");
+                return;
+            }
+            
+            ItemDefinition selectedFish = fishItems[UnityEngine.Random.Range(0, fishItems.Count)];
+            
+            // Create competition state
+            MostItemsCompetitonState state = new MostItemsCompetitonState
+            {
+                ItemId = selectedFish.Id
+            };
+            
+            // Randomize currency type (70% coins, 30% bucks for rarer rewards)
+            StoreManager.CurrencyType currency = UnityEngine.Random.value < 0.7f 
+                ? StoreManager.CurrencyType.coins 
+                : StoreManager.CurrencyType.bucks;
+            
+            // Generate prize distribution based on currency type
+            List<int> prizeDistribution = GeneratePrizeDistribution(currency);
+            
+            Debug.Log($"[CompetitionManager] Created event: Collect {selectedFish.DisplayName} | Start: {startDate:yyyy-MM-dd HH:mm} | Duration: {durationHours}h | Currency: {currency}");
+            
+            AddUpcomingCompetition(state, startDate, endDate, currency, prizeDistribution);
+        }
+
+        /// <summary>
+        /// Generates a prize distribution for the top 10 players.
+        /// Bucks have lower amounts since they're more valuable.
+        /// </summary>
+        [Server]
+        private static List<int> GeneratePrizeDistribution(StoreManager.CurrencyType currency)
+        {
+            List<int> prizes = new List<int>(10);
+            
+            if (currency == StoreManager.CurrencyType.coins)
+            {
+                // Coins: More generous amounts
+                prizes.Add(UnityEngine.Random.Range(800, 1201));  // 1st place: 800-1200
+                prizes.Add(UnityEngine.Random.Range(500, 801));   // 2nd place: 500-800
+                prizes.Add(UnityEngine.Random.Range(300, 501));   // 3rd place: 300-500
+                prizes.Add(UnityEngine.Random.Range(200, 301));   // 4th place: 200-300
+                prizes.Add(UnityEngine.Random.Range(150, 201));   // 5th place: 150-200
+                prizes.Add(UnityEngine.Random.Range(100, 151));   // 6th place: 100-150
+                prizes.Add(UnityEngine.Random.Range(75, 101));    // 7th place: 75-100
+                prizes.Add(UnityEngine.Random.Range(50, 76));     // 8th place: 50-75
+                prizes.Add(UnityEngine.Random.Range(30, 51));     // 9th place: 30-50
+                prizes.Add(UnityEngine.Random.Range(20, 31));     // 10th place: 20-30
+            }
+            else // Bucks
+            {
+                // Bucks: More conservative amounts (premium currency)
+                prizes.Add(UnityEngine.Random.Range(80, 121));    // 1st place: 80-120
+                prizes.Add(UnityEngine.Random.Range(50, 81));     // 2nd place: 50-80
+                prizes.Add(UnityEngine.Random.Range(30, 51));     // 3rd place: 30-50
+                prizes.Add(UnityEngine.Random.Range(20, 31));     // 4th place: 20-30
+                prizes.Add(UnityEngine.Random.Range(15, 21));     // 5th place: 15-20
+                prizes.Add(UnityEngine.Random.Range(10, 16));     // 6th place: 10-15
+                prizes.Add(UnityEngine.Random.Range(8, 11));      // 7th place: 8-10
+                prizes.Add(UnityEngine.Random.Range(6, 9));       // 8th place: 6-8
+                prizes.Add(UnityEngine.Random.Range(4, 7));       // 9th place: 4-6
+                prizes.Add(UnityEngine.Random.Range(2, 5));       // 10th place: 2-4
+            }
+            
+            return prizes;
+        }
+
         [Server]
         public static void AddUpcomingCompetition(ICompetitionState competitionState, DateTime startDate,
             DateTime endDate, StoreManager.CurrencyType rewardCurrency, List<int> rewardDistribution)
