@@ -22,6 +22,7 @@ namespace GlobalCompetitionSystem
         public DateTime EndDateTime => _endDateTime;
         public StoreManager.CurrencyType RewardCurrency => _rewardCurrency;
         public List<int> Prizepool => _prizepool;
+        public Guid CompetitionId { get; set; } // Backend competition UUID
             
         public Competition(ICompetitionState competitionState, DateTime start, DateTime end, StoreManager.CurrencyType rewardCurrency, List<int> prizepool)
         {
@@ -30,6 +31,7 @@ namespace GlobalCompetitionSystem
             _endDateTime = end;
             _rewardCurrency = rewardCurrency;
             _prizepool = prizepool;
+            CompetitionId = Guid.Empty; // Will be set from backend
         }
     }
     
@@ -92,6 +94,9 @@ namespace GlobalCompetitionSystem
                 playerObject.PlayerName = playerName;
                 playerObject.Result = newResult;
                 _playerScoreLookup[playerId] = newResult;
+                
+                // Sync score to backend
+                SyncScoreToBackend(playerId, playerName, newResult);
             }
             else
             {
@@ -103,7 +108,26 @@ namespace GlobalCompetitionSystem
                 PlayerResult newPlayerResult = new PlayerResult(playerId, playerName, newResult);
                 _results[newResult].Add(newPlayerResult);
                 _playerScoreLookup[playerId] = newResult;
+                
+                // Sync score to backend
+                SyncScoreToBackend(playerId, playerName, newResult);
             }
+        }
+
+        private void SyncScoreToBackend(Guid playerId, string playerName, int score)
+        {
+            if (RunningCompetition.CompetitionId == Guid.Empty)
+            {
+                Debug.LogWarning("[CompetitionManager] Cannot sync score - competition has no backend ID");
+                return;
+            }
+            
+            DatabaseCommunications.UpdateCompetitionScore(
+                RunningCompetition.CompetitionId,
+                playerId,
+                playerName,
+                score
+            );
         }
 
         public SortedList<int, PlayerResult> GetTopPerformers(int amount)
@@ -214,182 +238,192 @@ namespace GlobalCompetitionSystem
             }
         }
 
-        // >> Automatically generates and schedules new competitions to keep the event queue populated.
-        // >> Checks daily and maintains a minimum of 3 upcoming events.
+        // >> Polls the backend server for active and upcoming competitions.
+        // >> Syncs local competition state with the database every 60 seconds.
         [Server]
         public static IEnumerator AutoGenerateEvents()
         {
             // Wait a bit on startup to ensure all systems are initialized
             yield return new WaitForSeconds(10f);
             
-            DateTime lastEventCheck = DateTime.MinValue;
-            TimeSpan checkInterval = new TimeSpan(24, 0, 0); // Check once per day
-            int minUpcomingEvents = 3;
+            Debug.Log("[CompetitionManager] Backend sync system started");
             
-            Debug.Log("[CompetitionManager] Auto-generation system started");
+            // Initial sync
+            FetchCompetitionsFromBackend();
             
             while (true)
             {
-                // Check if we need to generate new events
-                if (DateTime.Now - lastEventCheck > checkInterval)
-                {
-                    lastEventCheck = DateTime.Now;
-                    
-                    if (_upcomingCompetitions.Count < minUpcomingEvents)
-                    {
-                        int eventsToGenerate = minUpcomingEvents - _upcomingCompetitions.Count;
-                        Debug.Log($"[CompetitionManager] Generating {eventsToGenerate} new events. Current count: {_upcomingCompetitions.Count}");
-                        
-                        for (int i = 0; i < eventsToGenerate; i++)
-                        {
-                            CreateRandomEvent();
-                        }
-                    }
-                }
-                
-                // Check every hour
-                yield return new WaitForSeconds(3600f);
+                // Poll backend every 60 seconds
+                yield return new WaitForSeconds(60f);
+                FetchCompetitionsFromBackend();
             }
         }
 
-        // >> Creates a random competition event with varied parameters.
-        // >> Randomly selects between MostFish, LargestFish, and MostItems competition types.
         [Server]
-        private static void CreateRandomEvent()
+        private static void FetchCompetitionsFromBackend()
         {
-            // Find the latest upcoming event to schedule after it
-            DateTime startDate;
-            if (_upcomingCompetitions.Count > 0)
+            // Fetch active competitions
+            DatabaseCommunications.GetActiveCompetitions((response) =>
             {
-                Competition lastEvent = _upcomingCompetitions.Last();
-                // Schedule 6-12 hours after the last event ends
-                int hoursDelay = UnityEngine.Random.Range(6, 13);
-                startDate = lastEvent.EndDateTime.AddHours(hoursDelay);
-            }
-            else if (_currentCompetition != null)
-            {
-                // Schedule after current competition
-                int hoursDelay = UnityEngine.Random.Range(6, 13);
-                startDate = _currentCompetition.CompetitionData.RunningCompetition.EndDateTime.AddHours(hoursDelay);
-            }
-            else
-            {
-                // No competitions at all, start soon
-                startDate = DateTime.Now.AddHours(UnityEngine.Random.Range(2, 6));
-            }
-            
-            // Event duration: 12-48 hours
-            int durationHours = UnityEngine.Random.Range(12, 49);
-            DateTime endDate = startDate.AddHours(durationHours);
-            
-            // Select a random fish to collect
-            ItemDefinition[] allItems = ItemSystem.ItemRegistry.GetFullItemsList();
-            List<ItemDefinition> fishItems = new List<ItemDefinition>();
-            
-            foreach (var item in allItems)
-            {
-                var fishBehaviour = item.GetBehaviour<ItemSystem.FishBehaviour>();
-                if (fishBehaviour != null)
+                if (response.EndRequestReason == WebRequestHandler.RequestEndReason.success)
                 {
-                    fishItems.Add(item);
+                    try
+                    {
+                        CompetitionWithLeaderboardResponse[] activeCompetitions = 
+                            JsonUtility.FromJson<CompetitionWithLeaderboardWrapper>("{\"competitions\":" + response.ResponseData + "}").competitions;
+                        
+                        foreach (var apiComp in activeCompetitions)
+                        {
+                            Guid compId = Guid.Parse(apiComp.competition_id);
+                            
+                            // Check if we already have this competition active
+                            if (_currentCompetition != null && _currentCompetition.CompetitionData.RunningCompetition.CompetitionId == compId)
+                            {
+                                // Update leaderboard
+                                UpdateLeaderboardFromAPI(apiComp.leaderboard);
+                                continue;
+                            }
+                            
+                            // Start this competition if it's not active
+                            Competition competition = ConvertAPIToCompetition(apiComp);
+                            SetCurrentCompetition(competition);
+                            UpdateLeaderboardFromAPI(apiComp.leaderboard);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError($"[CompetitionManager] Failed to parse active competitions: {e.Message}");
+                    }
                 }
-            }
+            });
             
-            if (fishItems.Count == 0)
+            // Fetch upcoming competitions
+            DatabaseCommunications.GetUpcomingCompetitions((response) =>
             {
-                Debug.LogWarning("[CompetitionManager] No fish items found for event generation!");
-                return;
-            }
-            
-            ItemDefinition selectedFish = fishItems[UnityEngine.Random.Range(0, fishItems.Count)];
-            
-            // Randomly select competition type (33% each)
-            int competitionType = UnityEngine.Random.Range(0, 3);
-            ICompetitionState state;
-            string eventDescription;
-            
-            switch (competitionType)
+                if (response.EndRequestReason == WebRequestHandler.RequestEndReason.success)
+                {
+                    try
+                    {
+                        CompetitionResponse[] upcomingCompetitions = 
+                            JsonUtility.FromJson<CompetitionArrayWrapper>("{\"competitions\":" + response.ResponseData + "}").competitions;
+                        
+                        // Clear and rebuild upcoming list
+                        _upcomingCompetitions.Clear();
+                        
+                        foreach (var apiComp in upcomingCompetitions)
+                        {
+                            Competition competition = ConvertAPIToCompetition(apiComp);
+                            _upcomingCompetitions.Add(competition);
+                        }
+                        
+                        Debug.Log($"[CompetitionManager] Synced {_upcomingCompetitions.Count} upcoming competitions from backend");
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogError($"[CompetitionManager] Failed to parse upcoming competitions: {e.Message}");
+                    }
+                }
+            });
+        }
+
+        [Server]
+        private static Competition ConvertAPIToCompetition(CompetitionResponse apiComp)
+        {
+            ICompetitionState state = apiComp.competition_type switch
             {
-                case 0: // Most Fish Competition
-                    state = new MostFishCompetitonState
-                    {
-                        specificFish = true,
-                        fishIDToCatch = selectedFish.Id
-                    };
-                    eventDescription = $"Catch the most {selectedFish.DisplayName}";
-                    break;
-                    
-                case 1: // Largest Fish Competition
-                    state = new largestFishCompetitonState
-                    {
-                        specificFish = true,
-                        fishIDToCatch = selectedFish.Id
-                    };
-                    eventDescription = $"Catch the biggest {selectedFish.DisplayName}";
-                    break;
-                    
-                case 2: // Most Items Competition
-                default:
-                    state = new MostItemsCompetitonState
-                    {
-                        ItemId = selectedFish.Id
-                    };
-                    eventDescription = $"Collect the most {selectedFish.DisplayName}";
-                    break;
-            }
+                1 => new MostFishCompetitonState { specificFish = true, fishIDToCatch = apiComp.target_fish_id },
+                2 => new MostItemsCompetitonState { ItemId = apiComp.target_fish_id },
+                3 => new largestFishCompetitonState { specificFish = true, fishIDToCatch = apiComp.target_fish_id },
+                _ => throw new NotSupportedException($"Unknown competition type: {apiComp.competition_type}")
+            };
             
-            // Randomize currency type (70% coins, 30% bucks for rarer rewards)
-            StoreManager.CurrencyType currency = UnityEngine.Random.value < 0.7f 
+            StoreManager.CurrencyType currency = apiComp.reward_currency == "coins" 
                 ? StoreManager.CurrencyType.coins 
                 : StoreManager.CurrencyType.bucks;
             
-            // Generate prize distribution based on currency type
-            List<int> prizeDistribution = GeneratePrizeDistribution(currency);
+            List<int> prizes = new List<int>
+            {
+                apiComp.prize_1st, apiComp.prize_2nd, apiComp.prize_3rd, apiComp.prize_4th, apiComp.prize_5th,
+                apiComp.prize_6th, apiComp.prize_7th, apiComp.prize_8th, apiComp.prize_9th, apiComp.prize_10th
+            };
             
-            Debug.Log($"[CompetitionManager] Created event: {eventDescription} | Start: {startDate:yyyy-MM-dd HH:mm} | Duration: {durationHours}h | Currency: {currency}");
+            DateTime startTime = DateTime.Parse(apiComp.start_time).ToUniversalTime();
+            DateTime endTime = DateTime.Parse(apiComp.end_time).ToUniversalTime();
             
-            AddUpcomingCompetition(state, startDate, endDate, currency, prizeDistribution);
+            Competition competition = new Competition(state, startTime, endTime, currency, prizes)
+            {
+                CompetitionId = Guid.Parse(apiComp.competition_id)
+            };
+            
+            return competition;
         }
 
-        /// <summary>
-        /// Generates a prize distribution for the top 10 players.
-        /// Bucks have lower amounts since they're more valuable.
-        /// </summary>
+        [Server]
+        private static Competition ConvertAPIToCompetition(CompetitionWithLeaderboardResponse apiComp)
+        {
+            CompetitionResponse baseComp = new CompetitionResponse
+            {
+                competition_id = apiComp.competition_id,
+                competition_type = apiComp.competition_type,
+                target_fish_id = apiComp.target_fish_id,
+                start_time = apiComp.start_time,
+                end_time = apiComp.end_time,
+                reward_currency = apiComp.reward_currency,
+                prize_1st = apiComp.prize_1st,
+                prize_2nd = apiComp.prize_2nd,
+                prize_3rd = apiComp.prize_3rd,
+                prize_4th = apiComp.prize_4th,
+                prize_5th = apiComp.prize_5th,
+                prize_6th = apiComp.prize_6th,
+                prize_7th = apiComp.prize_7th,
+                prize_8th = apiComp.prize_8th,
+                prize_9th = apiComp.prize_9th,
+                prize_10th = apiComp.prize_10th,
+                created_at = apiComp.created_at
+            };
+            
+            return ConvertAPIToCompetition(baseComp);
+        }
+
+        [Server]
+        private static void UpdateLeaderboardFromAPI(CompetitionParticipantResponse[] leaderboard)
+        {
+            if (_currentCompetition == null) return;
+            
+            // Update current competition leaderboard with backend data
+            foreach (var participant in leaderboard)
+            {
+                Guid playerId = Guid.Parse(participant.user_id);
+                _currentCompetition.CompetitionData.AddOrUpdateResult(playerId, participant.user_name, participant.score);
+            }
+        }
+
+        // JSON wrapper classes for array deserialization
+        [Serializable]
+        private class CompetitionArrayWrapper
+        {
+            public CompetitionResponse[] competitions;
+        }
+
+        [Serializable]
+        private class CompetitionWithLeaderboardWrapper
+        {
+            public CompetitionWithLeaderboardResponse[] competitions;
+        }
+
+        // >> DEPRECATED: Local event generation replaced with backend sync
+        // >> Kept for reference but no longer called
+        [Server]
+        private static void CreateRandomEvent()
+        {
+            Debug.LogWarning("[CompetitionManager] CreateRandomEvent() is deprecated. Events are now generated by the backend.");
+        }
+
         [Server]
         private static List<int> GeneratePrizeDistribution(StoreManager.CurrencyType currency)
         {
-            List<int> prizes = new List<int>(10);
-            
-            if (currency == StoreManager.CurrencyType.coins)
-            {
-                // Coins: More generous amounts
-                prizes.Add(UnityEngine.Random.Range(800, 1201));  // 1st place: 800-1200
-                prizes.Add(UnityEngine.Random.Range(500, 801));   // 2nd place: 500-800
-                prizes.Add(UnityEngine.Random.Range(300, 501));   // 3rd place: 300-500
-                prizes.Add(UnityEngine.Random.Range(200, 301));   // 4th place: 200-300
-                prizes.Add(UnityEngine.Random.Range(150, 201));   // 5th place: 150-200
-                prizes.Add(UnityEngine.Random.Range(100, 151));   // 6th place: 100-150
-                prizes.Add(UnityEngine.Random.Range(75, 101));    // 7th place: 75-100
-                prizes.Add(UnityEngine.Random.Range(50, 76));     // 8th place: 50-75
-                prizes.Add(UnityEngine.Random.Range(30, 51));     // 9th place: 30-50
-                prizes.Add(UnityEngine.Random.Range(20, 31));     // 10th place: 20-30
-            }
-            else // Bucks
-            {
-                // Bucks: More conservative amounts (premium currency)
-                prizes.Add(UnityEngine.Random.Range(80, 121));    // 1st place: 80-120
-                prizes.Add(UnityEngine.Random.Range(50, 81));     // 2nd place: 50-80
-                prizes.Add(UnityEngine.Random.Range(30, 51));     // 3rd place: 30-50
-                prizes.Add(UnityEngine.Random.Range(20, 31));     // 4th place: 20-30
-                prizes.Add(UnityEngine.Random.Range(15, 21));     // 5th place: 15-20
-                prizes.Add(UnityEngine.Random.Range(10, 16));     // 6th place: 10-15
-                prizes.Add(UnityEngine.Random.Range(8, 11));      // 7th place: 8-10
-                prizes.Add(UnityEngine.Random.Range(6, 9));       // 8th place: 6-8
-                prizes.Add(UnityEngine.Random.Range(4, 7));       // 9th place: 4-6
-                prizes.Add(UnityEngine.Random.Range(2, 5));       // 10th place: 2-4
-            }
-            
-            return prizes;
+            Debug.LogWarning("[CompetitionManager] GeneratePrizeDistribution() is deprecated. Prize distribution is managed by the backend.");
+            return new List<int>();
         }
 
         [Server]

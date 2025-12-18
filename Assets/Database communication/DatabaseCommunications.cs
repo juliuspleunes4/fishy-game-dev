@@ -292,4 +292,46 @@ public static class DatabaseCommunications
         byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
         WebRequestHandler.SendWebRequest(DatabaseEndpoints.removeExpiredEffectEndpoint, bodyRaw);
     }
+
+    // Competition endpoints
+    [Server]
+    public static void GetActiveCompetitions(WebRequestHandler.WebRequestCallback callback)
+    {
+        WebRequestHandler.SendGetRequest(DatabaseEndpoints.getActiveCompetitionsEndpoint, callback);
+    }
+
+    [Server]
+    public static void GetUpcomingCompetitions(WebRequestHandler.WebRequestCallback callback)
+    {
+        WebRequestHandler.SendGetRequest(DatabaseEndpoints.getUpcomingCompetitionsEndpoint, callback);
+    }
+
+    [Server]
+    public static void UpdateCompetitionScore(Guid competitionId, Guid userId, string userName, int score)
+    {
+        UpdateCompetitionScoreRequest requestData = new UpdateCompetitionScoreRequest
+        {
+            competition_id = competitionId.ToString(),
+            user_id = userId.ToString(),
+            user_name = userName,
+            score = score
+        };
+
+        string json = JsonUtility.ToJson(requestData);
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+        WebRequestHandler.SendWebRequest(DatabaseEndpoints.updateCompetitionScoreEndpoint, bodyRaw);
+    }
+
+    [Server]
+    public static void GenerateCompetitions(int count, WebRequestHandler.WebRequestCallback callback)
+    {
+        GenerateCompetitionsRequest requestData = new GenerateCompetitionsRequest
+        {
+            count = count
+        };
+
+        string json = JsonUtility.ToJson(requestData);
+        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
+        WebRequestHandler.SendWebRequest(DatabaseEndpoints.generateCompetitionsEndpoint, bodyRaw, callback);
+    }
 }

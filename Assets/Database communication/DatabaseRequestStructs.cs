@@ -194,4 +194,75 @@ public class RemoveExpiredEffectsRequest
     public int item_id;
 }
 
+// Competition requests and responses
+[Serializable]
+public class CompetitionResponse
+{
+    public string competition_id;
+    public int competition_type; // 1=MostFish, 2=MostItems, 3=LargestFish
+    public int target_fish_id;
+    public string start_time; // ISO 8601 UTC
+    public string end_time; // ISO 8601 UTC
+    public string reward_currency; // "coins" or "bucks"
+    public int prize_1st;
+    public int prize_2nd;
+    public int prize_3rd;
+    public int prize_4th;
+    public int prize_5th;
+    public int prize_6th;
+    public int prize_7th;
+    public int prize_8th;
+    public int prize_9th;
+    public int prize_10th;
+    public string created_at;
+}
+
+[Serializable]
+public class CompetitionParticipantResponse
+{
+    public string competition_id;
+    public string user_id;
+    public string user_name;
+    public int score;
+    public string last_updated;
+}
+
+[Serializable]
+public class CompetitionWithLeaderboardResponse
+{
+    public string competition_id;
+    public int competition_type;
+    public int target_fish_id;
+    public string start_time;
+    public string end_time;
+    public string reward_currency;
+    public int prize_1st;
+    public int prize_2nd;
+    public int prize_3rd;
+    public int prize_4th;
+    public int prize_5th;
+    public int prize_6th;
+    public int prize_7th;
+    public int prize_8th;
+    public int prize_9th;
+    public int prize_10th;
+    public string created_at;
+    public CompetitionParticipantResponse[] leaderboard;
+}
+
+[Serializable]
+public class UpdateCompetitionScoreRequest
+{
+    public string competition_id;
+    public string user_id;
+    public string user_name;
+    public int score;
+}
+
+[Serializable]
+public class GenerateCompetitionsRequest
+{
+    public int count;
+}
+
 #nullable disable

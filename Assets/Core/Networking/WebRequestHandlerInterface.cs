@@ -92,6 +92,13 @@ public static class WebRequestHandler
         ongoingRequests.Add(new RequestMessageData(connection, request, objects, callback));
     }
 
+    public static void SendGetRequest(string url, WebRequestCallback callback)
+    {
+        UnityWebRequest request = UnityWebRequest.Get(url);
+        request.SendWebRequest();
+        ongoingRequests.Add(new RequestMessageData(null, request, null, callback));
+    }
+
     public static void CheckOngoingRequests()
     {
         //Reverse order because it does remove items inside the loop and will skip over items if done from the front

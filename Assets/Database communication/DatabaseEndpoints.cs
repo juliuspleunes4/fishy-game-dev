@@ -28,5 +28,8 @@ public static class DatabaseEndpoints
     public static string addActiveEffectEndpoint = serverAddress + "effects/add_effect";
     public static string removeExpiredEffectEndpoint = serverAddress + "effects/remove_expired";
     
-    public static string getPlayerDataEndpoint = serverAddress + "data/retreive_all_playerdata";
-}
+    public static string getPlayerDataEndpoint = serverAddress + "data/retreive_all_playerdata";    
+    public static string getActiveCompetitionsEndpoint = serverAddress + "competitions/active";
+    public static string getUpcomingCompetitionsEndpoint = serverAddress + "competitions/upcoming";
+    public static string updateCompetitionScoreEndpoint = serverAddress + "competitions/update_score";
+    public static string generateCompetitionsEndpoint = serverAddress + "competitions/generate";}
