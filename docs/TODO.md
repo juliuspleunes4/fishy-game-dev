@@ -194,7 +194,7 @@ This file tracks all TODOs identified throughout the codebase, as well as planne
   - Improves security by preventing simultaneous logins
 
 ### Events System
-- [ ] **Automatic event creation**: Develop a system that automatically generates and schedules new in-game events
+- [X] **Automatic event creation**: Develop a system that automatically generates and schedules new in-game events
   - Should create events on a regular basis
   - Events should be varied and engaging for players
 
